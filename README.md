@@ -4,7 +4,7 @@
 
 # JavaSec
 
-Java安全学习历程
+Java安全学习历程 同步更新在语雀：[https://www.yuque.com/m0re/demosec](https://www.yuque.com/m0re/demosec)
 
 ---
 
