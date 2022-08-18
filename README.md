@@ -4,7 +4,13 @@
 
 # JavaSec
 
+<<<<<<< HEAD
 Java安全学习历程，同步更新在语雀：https://www.yuque.com/m0re/demosec
+=======
+Java安全学习历程 同步更新在语雀：[https://www.yuque.com/m0re/demosec](https://www.yuque.com/m0re/demosec)
+
+---
+>>>>>>> 573db5ae10ee2e2cc5032b599878761879f28a9a
 
 ## 学习参考
 1. 知识星球
