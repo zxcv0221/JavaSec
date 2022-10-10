@@ -253,4 +253,63 @@ public class POC {
 
 下面开始分析，看下POC是通过`java.lang.Class`，将`JdbcRowSetImpl`类加载到`Map`中缓存，从而绕过AutoType的检测。因此将payload分两次发送，第一次加载，第二次执行。默认情况下，只要遇到没有加载到缓存的类，`checkAutoType()`就会抛出异常终止程序。
 
-下断点进行调试，在
+主要看`ParserConfig.checkAutoType()`中好几个判断做了什么，这里可以看到如果`autuType`是开启的，那么就会进入后面的黑名单验证，通过验证就直接返回指定的类名。当然这里是我没有开启，所以就直接进入到红框中的部分，从`TypeUtils.getClassFromMapping()`去获取类，这个`typeName`是指`@type`指定的类。
+
+![image-20221010115236239](img/image-20221010115236239.png)
+
+`getClassFromMapping`方法是从Mappings字典中去获取。我在这里下了断点看看字典
+
+![image-20221010120051293](img/image-20221010120051293.png)
+
+如果 `@type` 指定的类，在缓存 `Mappings` 字典里找到的话，跳过 `checkAutoType`检测直接返回类对象。这里就是这个漏洞的关键，只要在 `Mappings` 里添加可以利用到的反序列化的类，就能绕过 `checkAutoType` 的黑名单检测。
+
+如果不在`Mappings`中，那么就进入下一步
+
+![image-20221010120337318](img/image-20221010120337318.png)
+
+跟进`findClass()`方法，也下一个断点
+
+![image-20221010123259014](img/image-20221010123259014.png)
+
+然后可以发现POC中的payload可以满足。
+
+![image-20221010123222317](img/image-20221010123222317.png)
+
+然后返回checkAutoType，赋值给clazz，再继续进行反序列化
+
+![image-20221010143145814](img/image-20221010143145814.png)
+
+然后将payload 中传入的val值赋值给`objVal`
+
+![image-20221010143511524](img/image-20221010143511524.png)
+
+下面定义了新的`strVal`，并将`objVal`又赋值给`strVal`
+
+![image-20221010152245723](img/image-20221010152245723.png)
+
+然后往下看，`clazz==Class.class`都是`java.lang.Class`符合判断，进入下一步，`TyprUtils.loadClass()`方法
+
+![image-20221010152349965](img/image-20221010152349965.png)
+
+然后在加载的时候先判断类是否在 `mappings` 中，如果不存在，加载完成之后会添加进 `mappings`
+
+![image-20221010152655790](img/image-20221010152655790.png)
+
+这里就将下面需要利用的恶意类 `com.sun.rowset.JdbcRowSetImpl` 添加进了 `mappings`，等下次反序列化进入 `checkAutoType` 时就可以绕过黑白名单检测。
+这样才属于走完了payload的第一部分
+
+```java
+{"@type":"java.lang.Class","val":"com.sun.rowset.JdbcRowSetImpl"}
+```
+
+它的作用就是将需要用到的恶意类先添加进`mappings`中然后第二次再去调用的时候就可以绕过`checkAutoType`的黑白名单检测了，第二部分就是之前的payload了。
+
+至于这个在下一个版本的修复则是：在MiscCodec中设置了cache默认值为false
+
+```java
+if (clazz == Class.class) {
+   return (T) TypeUtils.loadClass(strVal, parser.getConfig().getDefaultClassLoader(), false);
+        }
+```
+
+![img](img/copy-20221010.png)
