@@ -4,8 +4,6 @@
 
 # JavaSec
 
-Java安全学习历程 同步更新在语雀：[https://www.yuque.com/m0re/demosec](https://www.yuque.com/m0re/demosec)
-
 ## 学习参考
 1. 知识星球
 2. https://github.com/DuGuQiuBai/Java
