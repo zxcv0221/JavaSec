@@ -200,3 +200,305 @@ F:但是多个传参，且传入的参数类型是一样的又该怎么操作？
 @ComponentScan({"com.itheima.service", "com.itheima.dao"})
 ```
 暂时不写了........
+
+------
+
+### AOP面向切面编程
+
+#### AOP案例
+
+```java
+package com.itheima.dao;
+
+public interface BookDao {
+    public void save();
+    public void update();
+}
+package com.itheima.dao.impl;
+
+
+import com.itheima.dao.BookDao;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class BookDaoImpl implements BookDao {
+    public void save(){
+        System.out.println(System.currentTimeMillis());
+        System.out.println("book dao save.....");
+    }
+    public void update(){System.out.println("book dao update.....");}
+}
+package com.itheima.config;
+
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
+
+@Configuration
+@ComponentScan("com.itheima")
+@EnableAspectJAutoProxy//告诉Spring，我使用了注解开发的Bean
+public class SpringConfig {
+}
+package com.itheima.aop;
+
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.stereotype.Component;
+
+@Component//接受Spring控制
+@Aspect//告诉Spring，我这是AOP
+public class MyAdvice {
+
+    @Pointcut("execution(void com.itheima.dao.BookDao.update())")
+    private void cut(){}
+
+    @Before("cut()")
+    public void method(){
+        System.out.println(System.currentTimeMillis());
+    }
+}
+```
+
+`@Pointcut`表示添加切点，execution表示执行，参数说明
+
+void：需要添加切点的方法的类型，这里update()在BookDaoImpl中可以看到是void
+
+后面参数表示方法的具体位置
+
+在需要执行的方法前添加`@Before()`可以在那个方法前执行切点方法
+
+```java
+package com.itheima;
+
+import com.itheima.config.SpringConfig;
+import com.itheima.dao.BookDao;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+
+public class App {
+    public static void main(String[] args) {
+        ApplicationContext ctx = new AnnotationConfigApplicationContext(SpringConfig.class);
+        BookDao bookDao = ctx.getBean(BookDao.class);
+        bookDao.update();
+    }
+}
+```
+
+![img](img/1667283599346-3056c88b-2ff7-4caf-aa0f-584b9d2f81d0.png)
+
+#### AOP表达式
+
+当有多个切入点的时候，就可以通过使用通配符来快速匹配
+
+![img](img/1667283970186-61f07d64-da89-48f7-ac4f-0871d6e0c442.png)
+
+详细说明
+
+```java
+* 表示任意一个
+..表示任意多个
++ 不常用，匹配子类
+```
+
+## Spring MVC
+
+### 请求方式
+
+```java
+@RequestMapping("/user")
+@GetMapping("/user")
+@PostMapping("/user")
+```
+
+`GetMapping()`只能接受get请求方式传输的参数
+
+`PostMapping()`则是只能接收post方式传输的参数
+
+`RequestMapping()`两种方式都可以接收
+
+```java
+@RequestMapping("/user")
+public class Account {
+	@GetMapping("/data")
+    public void data(@RequestParam("username") String name, @RequestParam("ageId") int age){
+        System.out.println("username"+name+"is"+age+"years old...");
+        System.out.println("this is data.....");
+    }
+}
+```
+
+两处知识点，路径设置，可以这样子设计。最后实现效果`/user/data`
+
+### 参数传递
+
+1. 普通传递，也就是上面的那种方式
+2. POJO参数传递，在User类中，有几个变量就可以传几个参数，会自动绑定。
+
+```java
+@RequestMapping("/pojo")
+@ResponseBody
+public void pojo(User user){
+    System.out.println(user);
+}
+```
+
+1. 嵌套POJO参数，如果存在引用型变量，也可以使用上述方式传输，只不过在前端传参时的形式需要变化。
+2. 数组传参
+
+```java
+@RequestMapping("/array")
+@ResponseBody
+public void array(String[] likes){
+    System.out.println(likes);
+}
+```
+
+1. 集合传参
+
+```java
+@RequestMapping("/list")
+@ResponseBody
+public void listParam(List<String> service){
+    System.out.println(service);
+}
+```
+
+### 日期参数传输
+
+日期的常见三种方式
+
+1. 2000/11/11
+2. 2000-11-11
+3. 2000/11/11 11:54:04
+
+实现方式
+
+```java
+@RequestMapping("/date")
+@ResponseBody
+public void thedate(Date date,
+                    @DateTimeFormat(pattern = "yyyy-mm-dd") Date date1,
+                    @DateTimeFormat(pattern = "yyyy/mm/dd HH:mm:ss") Date date2){
+    System.out.println(date);
+    System.out.println(date1);
+    System.out.println(date2);
+}
+```
+
+`@DateTimeFormat`实现格式的定义，需要传什么格式的日期，就定义什么格式。
+
+### 响应
+
+有请求就有响应，响应界面这么写
+
+```java
+@RequestMapping("/tojump")
+public String tojump(){
+    System.out.println("=========");
+    return "page.jsp";
+}
+```
+
+返回页面数据的话，如上，需要设置类型为String
+
+```java
+@RequestMapping("/totext")
+@ResponseBody
+public String totext(){
+    System.out.println("=========");
+    return "response text";
+}
+```
+
+返回文本类型的数据，需要设置类型为String，注意`@ResponseBody`
+
+```java
+@RequestMapping("/toPojo")
+public BookDao pojoPage(){
+    System.out.println("响应pojo对象");
+    BookDao bookDao = new BookDaoImpl();
+    bookDao.update();
+    bookDao.save();
+    return bookDao;
+}
+```
+
+返回json对象数据
+
+### REST开发模式
+
+REST风格，路径传参。
+
+```java
+//http://127.0.0.1:8080/user	仅限POST方式提交
+@RequestMapping(value = "/user", method = RequestMethod.POST)
+@ResponseBody
+public String save(){
+    System.out.println("user save....");
+    return "{user save}";
+}
+//http://127.0.0.1:8080/user/1		仅限DELETE方式提交
+@RequestMapping(value = "/user/{id}", method = RequestMethod.DELETE)
+@ResponseBody
+public String delete(@PathVariable Integer id){
+    System.out.println("user delete...."+id);
+    return "{user delete}";
+}
+```
+
+注意第二种，`@PathVariable`的使用。
+
+在REST实际开发中，注解开发可以使用`@RestController`代替`@Controller`和`@ResponseBody`
+
+```java
+@RestController
+//@Controller
+//@ResponseBody
+```
+
+然后就是Mapping的各种形式
+
+```java
+@PostMapping
+@GetMapping
+@PutMapping
+@DeleteMapping
+```
+
+### SSM整合
+
+没必要记录笔记，毕竟我也不学开发，就过一遍，看看他们是怎么进行开发的就可以
+
+### 拦截器
+
+大概是做权限验证的吧。
+
+## Maven
+
+分模块开发，当模块整合时，在maven中的操作是先将要被导入的模块的pom.xml中去查找，注意install是可以将模块打包的。
+
+跳过......
+
+------
+
+## Spring-Boot
+
+Spring-Boot相关漏洞资料：https://github.com/LandGrey/SpringBootVulExploit
+
+关于Spring-Boot的配置文件有三种形式
+
+1. application.properties
+2. application.yml
+3. application.yaml
+
+三种格式的文件都是spring-boot的配置文件，当三种配置文件同时存在时，优先级依次为`properties>yml>yaml`
+
+但是在开发中多使用yml格式。
+
+开启debug需要在配置文件中
+
+```java
+debug: true
+```

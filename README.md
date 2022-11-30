@@ -25,16 +25,48 @@
 #### CC链
 - 推荐白日梦组长的视频
 - [算是随堂笔记吧...](https://github.com/zxcv0221/JavaSec/tree/main/Nday%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90)
+- https://github.com/frohoff/ysoserial
+
+#### FastJson
+
+[漏洞基础分析]https://github.com/zxcv0221/JavaSec/blob/main/Nday%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/FastJson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/FastJson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90.md
+
+[1.2.25-1.2.47分析]https://github.com/zxcv0221/JavaSec/blob/main/Nday%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/FastJson%E5%90%84%E7%89%88%E6%9C%AC%E8%A1%A5%E4%B8%81%E7%BB%95%E8%BF%87%E5%88%86%E6%9E%90/FastJson%E5%90%84%E7%89%88%E6%9C%AC%E8%A1%A5%E4%B8%81%E7%BB%95%E8%BF%87%E5%88%86%E6%9E%90.md
+
+1.2.47之后的版本暂时看不进去了.....后面再说吧
+
 ### 代码审计（OWASP TOP 10）& CodeQL
-建议结合CodeQL一块学习，学习每一个漏洞，都要知道哪里最可能会存在这种漏洞，怎么利用CodeQL发现漏洞
+结合CodeQL一块学习，学习每一个漏洞，都要知道哪里最可能会存在这种漏洞，怎么利用CodeQL发现漏洞
+
 #### OWASP TOP 10
 - [SQL注入](https://github.com/zxcv0221/JavaSec/tree/main/%E5%B8%B8%E8%A7%81%E6%BC%8F%E6%B4%9E/SQL%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E)
 - [XSS](https://github.com/zxcv0221/JavaSec/tree/main/%E5%B8%B8%E8%A7%81%E6%BC%8F%E6%B4%9E/XSS%E6%BC%8F%E6%B4%9E)
 #### CodeQL
+<<<<<<< HEAD
+看了很多有记录的项目，大多存了很多学习链接，比较懒就直接把那些项目贴过来了。
+
+官方：
+
+https://github.com/Firebasky/CodeqlLearn
+
+https://github.com/ice-doom/CodeQLRule
+
+https://github.com/safe6Sec/CodeqlNote
+
+[优质博客](https://blog.gm7.org/%E4%B8%AA%E4%BA%BA%E7%9F%A5%E8%AF%86%E5%BA%93/02.%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/03.codeql/01.codeql%E5%85%A5%E9%97%A8.html)
+
+http://tttang.com/archive/1322
+
 ......
 
+### 内存马
+
+FIlter型
+
+........
+
 ## 文章旁白
-CC链分析和shiro分析使原本想投稿的，然后写完发现各大社区很多这类文章了，就没投了。所以这两章写的比较基础和详细一点的，后面的估计也就不会这样写了，随便写写自己可以看懂就可以了。毕竟也是给自己看的。
+......
 
 ## 注意
 学习的时候参考路线和知识点，不要照抄师傅们的文章，没有意义，还是要在师傅们的总结中自己进行总结。
